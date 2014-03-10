@@ -17,7 +17,7 @@ namespace griddle
 		virtual void release(s_ptr& p) = 0;
 		virtual void place(s_ptr& p, pos_t pos) = 0;
 		virtual void displace(s_ptr& p) = 0;
-		virtual void move(s_ptr& from, pos_t pos) = 0;
+		virtual void move(s_ptr from, pos_t pos) = 0;
 
 		virtual bool claim_possible(const s_ptr& p) const = 0;
 		virtual bool release_possible(const s_ptr& p) const = 0;

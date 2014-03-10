@@ -1,6 +1,7 @@
 #pragma once
 #include <set>
 #include <memory>
+#include <functional>
 #include "locateable.h"
 
 namespace griddle
@@ -32,6 +33,8 @@ namespace griddle
 	template<typename P, typename T>
 	class cross_mover : public mover<P,T>
 	{
+	public:
+		cross_mover() : mList(locateable_less<T>) {}
 	protected:
 		virtual void unlockL(std::shared_ptr<T>& L)
 		{
@@ -43,6 +46,6 @@ namespace griddle
 			mover::lockL(L);
 			mList.insert(L);
 		}
-		std::set<std::shared_ptr<T>> mList;
+		std::set<std::shared_ptr<T>, std::function<bool(const std::shared_ptr<T>&, const std::shared_ptr<T>&)>> mList;
 	};
 }

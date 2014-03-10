@@ -39,9 +39,9 @@
 namespace griddle
 {
 
-	bool nop(int x, int y) { return true; }
+	inline bool nop(int x, int y) { return true; }
 
-	bool plot_line_both(
+	inline bool plot_line_both(
 		int x0, int y0, int x1, int y1,
 		std::function<bool(int x, int y)> location_callback,
 		std::function<bool(int dx, int dy)> delta_callback
@@ -64,13 +64,13 @@ namespace griddle
 			if (!delta_callback((e2 >= dy) ? sx : 0, (e2 <= dx) ? sy : 0)) return false;
 		}
 	}
-	bool plot_line_locations(
+	inline bool plot_line_locations(
 		int x0, int y0, int x1, int y1,
 		std::function<bool(int x, int y)> location_callback)
 	{
 		return plot_line_both(x0, y0, x1, y1, location_callback, nop);
 	}
-	bool plot_line_deltas(
+	inline bool plot_line_deltas(
 		int x0, int y0, int x1, int y1,
 		std::function<bool(int x, int y)> delta_callback)
 	{

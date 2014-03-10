@@ -15,6 +15,7 @@ namespace griddle
 		inline bool operator<(const vec& rhs) const
 		{
 			if (y < rhs.y) return true;
+			if (y > rhs.y) return false;
 			return x < rhs.x;
 		}
 	};
@@ -23,6 +24,26 @@ namespace griddle
 	inline static vec<I,max> operator+(const vec<I, max>& lhs, const vec<I, max>& rhs)
 	{
 		return vec<I, max>(lhs.x + rhs.x, lhs.y + rhs.y);
+	}
+	template<typename I, I max>
+	inline static vec<I, max> operator*(const vec<I, max>& lhs, const vec<I, max>& rhs)
+	{
+		return vec<I, max>(lhs.x * rhs.x, lhs.y * rhs.y);
+	}
+	template<typename I, I max>
+	inline static vec<I, max> operator*(const vec<I, max>& lhs, const I& rhs)
+	{
+		return lhs * vec<I,max>{ rhs, rhs };
+	}
+	template<typename I, I max>
+	inline static vec<I, max> operator*(const I& lhs, const vec<I, max>& rhs)
+	{
+		return rhs * lhs;
+	}
+	template<typename I, I max>
+	inline static vec<I, max> operator-(const vec<I, max>& lhs, const vec<I, max>& rhs)
+	{
+		return lhs + ((-1)*rhs);
 	}
 	template<typename I, I max>
 	inline bool in_rectangle(vec<I, max> xy, I left, I right, I top, I bottom)

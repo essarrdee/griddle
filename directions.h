@@ -2,51 +2,11 @@
 #include <vector>
 #include "vec.h"
 #include "position.h"
+#include <assert.h>
+
 
 namespace griddle
 {
-	//template<typename Dir, typename Tf>
-	//class transformed_direction
-	//{
-	//public:
-	//	transformed_direction(Dir dir) : mDir(dir), Tf() {}
-	//	transformed_direction() : transformed_direction(Dir()) {}
-	//	virtual Dir get_dir() const = 0;
-	//	void set_dir(const Dir& dir) { mDir = dir; }
-	//	void set_transformation(const Tf& transformation) { mTransformation = transformation; }
-	//protected:
-	//	Dir mDir;
-	//	Tf mTransformation;
-	//};
-	//template<typename Dir, typename Tf>
-	//transformed_direction<Dir, Tf> operator+(const transformed_direction<Dir, Tf>& dir, const Tf& transformation)
-	//{
-	//	transformed_direction td(dir);
-	//	td.set_dir(td.get_dir() + transformation);
-	//	return td;
-	//}
-	//template<typename Dir, typename Tf>
-	//transformed_direction<Dir, Tf>& operator+=(const transformed_direction<Dir, Tf>& dir, const Tf& transformation)
-	//{
-	//	dir = dir+transformation;
-	//	return dir;
-	//}
-
-	template<typename P,typename Sym>
-	class position_facing
-	{
-	public:
-		typedef typename P pos_t;
-		typedef typename Sym sym_t;
-		position_facing(pos_t pos_, sym_t sym) : pos(pos_), face(sym){}
-		position_facing(pos_t pos) : pos(pos), face(){}
-		position_facing() : pos(), face(){}
-		//pos_t get_position() { return position; }
-		pos_t pos;
-		sym_t face;
-	};
-
-
 	template<typename Dir, typename It = typename std::vector<Dir>::const_iterator>
 	class direction_set
 	{
@@ -54,6 +14,7 @@ namespace griddle
 		typedef typename It iterator;
 		virtual iterator begin() const = 0;
 		virtual iterator end() const = 0;
+		virtual int size() const = 0;
 	};
 
 	template<typename Del, typename Dir>
@@ -85,7 +46,9 @@ namespace griddle
 			Del operator*(){ return mDeltas.delta(base_t::operator*()); }
 			using base_t::operator++;
 			bool operator==(const iterator& rhs)
-			{ return mDeltas == rhs.mDeltas && base_t::operator==(rhs); }
+			{
+				return mDeltas == rhs.mDeltas && base_t::operator==(rhs);
+			}
 			bool operator!=(const iterator& rhs) { return !(*this == rhs); }
 		protected:
 			const deltas_t& mDeltas;
@@ -96,83 +59,27 @@ namespace griddle
 	};
 
 	template<unsigned int N>
-	class symN // specifies a member of the dihedral group with 2N elements. Normally N=8.
-		// see http://groupprops.subwiki.org/wiki/Dihedral_group:D16
-	{
-	public:
-		bool reflection; // true if the symmetry is a reflection of the form xa^(rotation)
-		int rotation; // the symmetry is of the form a^(rotation) or xa^(rotation)
-		symN(int rot, bool refl) : reflection(refl), rotation(modulo(rot,(int)N)) {}
-		symN(int rot) : symN(rot, false) {}
-		symN(bool refl) : symN(0, refl) {}
-		symN() : symN(0, false) {}
-		inline bool valid() const { return rotation >= 0 && rotation < (int)N; }
-		symN flip() const { return{ rotation, !reflection }; }
-		symN inverse() const { return reflection ? symN(rotation, reflection) : symN(-rotation, reflection); }
-	};
-
-	template<unsigned int N>
-	symN<N> operator*(const symN<N>& lhs, const symN<N>& rhs)
-	{
-		return symN<N>(
-			(rhs.reflection? -lhs.rotation : lhs.rotation) + rhs.rotation,
-			lhs.reflection != rhs.reflection);
-	}
-
-	typedef symN<4> sym4;
-	typedef symN<6> sym6;
-	typedef symN<8> sym8;
-	namespace facing
-	{
-		static const sym4 NORTH_4(0, false);
-		static const sym4 EAST_4(1, false);
-		static const sym4 SOUTH_4(2, false);
-		static const sym4 WEST_4(3, false);
-
-		static const sym8 NORTH_8(0, false);
-		static const sym8 NORTH_EAST_8(1, false);
-		static const sym8 EAST_8(2, false);
-		static const sym8 SOUTH_EAST_8(3, false);
-		static const sym8 SOUTH_8(4, false);
-		static const sym8 SOUTH_WEST_8(5, false);
-		static const sym8 WEST_8(6, false);
-		static const sym8 NORTH_WEST_8(7, false);
-
-		static const sym4 NORTH_FLIPPED_4(0, true);
-		static const sym4 EAST_FLIPPED_4(1, true);
-		static const sym4 SOUTH_FLIPPED_4(2, true);
-		static const sym4 WEST_FLIPPED_4(3, true);
-
-		static const sym8 NORTH_FLIPPED_8(0, true);
-		static const sym8 NORTH_EAST_FLIPPED_8(1, true);
-		static const sym8 EAST_FLIPPED_8(2, true);
-		static const sym8 SOUTH_EAST_FLIPPED_8(3, true);
-		static const sym8 SOUTH_FLIPPED_8(4, true);
-		static const sym8 SOUTH_WEST_FLIPPED_8(5, true);
-		static const sym8 WEST_FLIPPED_8(6, true);
-		static const sym8 NORTH_WEST_FLIPPED_8(7, true);
-	}
-
-	template<unsigned int N>
 	class dirN
 	{
 	public:
-		typedef typename symN<N> sym_t;
 		int dir;
-		dirN(int d = 0) : dir(modulo( d, (int)N)) {}
+		dirN(int d = 0) : dir(modulo(d, (int)N)) {}
 		dirN flip() const { return (int)N - dir; }
-		dirN reverse() const { return (int)(N/2) + dir; }
+		// not recommended for use with odd N.
+		dirN reverse() const { return (int)(N / 2) + dir; }
 
 		bool operator==(const dirN& rhs) const { return dir == rhs.dir; }
-		bool operator<(const dirN& rhs) const { return dir < rhs.dir; }
+		bool operator<(const dirN& rhs) const
+		{
+			return dir < rhs.dir;
+		}
 
 		dirN operator+(int steps) const { return dir + steps }
 		dirN operator-(int steps) const { return dir + (-steps); }
-		dirN operator+(sym_t transformation) const { return (transformation.reflection ? -dir : dir) + transformation.rotation; }
 
-		dirN& operator+=(int steps) { *this = *this + steps; return *this; }
+		template<typename T>
+		dirN& operator+=(const T& rhs) { *this = *this + rhs; return *this; }
 		dirN& operator-=(int steps) { *this = *this - steps; return *this; }
-		dirN& operator+=(sym_t transformation) { *this = *this + transformation; return *this; }
 	};
 
 	typedef dirN<4> dir4;
@@ -197,10 +104,10 @@ namespace griddle
 	}
 
 	template<unsigned int N>
-	dirN<N> get_dirN(int x, int y);
+	inline dirN<N> get_dirN(int x, int y);
 
 	template<>
-	dir8 get_dirN<8>(int x, int y)
+	inline dir8 get_dirN<8>(int x, int y)
 	{
 		switch (y)
 		{
@@ -234,7 +141,7 @@ namespace griddle
 	}
 
 	template<>
-	dir4 get_dirN<4>(int x, int y)
+	inline dir4 get_dirN<4>(int x, int y)
 	{
 		if (x == -1 && y == 0)
 			return walking::FORWARD_4;
@@ -257,6 +164,7 @@ namespace griddle
 		typedef typename std::vector<dir_t> vector_t;
 		virtual iterator begin() const { return mDirs.cbegin(); }
 		virtual iterator end() const { return mDirs.cend(); }
+		virtual int size() const { return N; }
 		all_dirsN() : mDirs(build()) {}
 	protected:
 		static vector_t build()
@@ -277,10 +185,13 @@ namespace griddle
 		typedef typename dirN<N> dir_t;
 		virtual del_t delta(dir_t dir) const { return mDeltas[dir.dir]; }
 		all_deltasN(std::vector<del_t> deltas) : mDeltas(deltas)
-		{ assert(mDeltas.size() == N); }
+		{
+			assert(mDeltas.size() == N);
+		}
 	protected:
 		const std::vector<del_t> mDeltas;
 	};
+
 
 
 	typedef all_dirsN<4> all_dirs4;
@@ -311,6 +222,7 @@ namespace griddle
 	static const standard_direction_deltas6 HEX_DELTAS_A(DIRS_6, HEX_DIRECTIONS_A);
 	static const standard_direction_deltas6 HEX_DELTAS_B(DIRS_6, HEX_DIRECTIONS_B);
 	static const standard_direction_deltas8 ALL_DELTAS(DIRS_8, ALL_DIRECTIONS);
+
 
 	// augmented direction needs to take on additional values like rest, up, down, even actions
 	// direction_set of augmented direction needs to take on all these values

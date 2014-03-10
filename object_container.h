@@ -10,6 +10,7 @@ namespace griddle
 	class mover_container : public object_container_base<P, T>, public MOVER_TYPE
 	{
 	public:
+		mover_container() : MOVER_TYPE() {}
 		typedef typename MOVER_TYPE::pos_t pos_t;
 		//mover_container(const chart& c) : object_container_base(c){}
 		virtual void claim(s_ptr& p) { if (claim_possible(p)) lockL(p); }
@@ -33,13 +34,13 @@ namespace griddle
 	public:
 		typedef typename MOVER_CONTAINER_TYPE::s_ptr s_ptr;
 		typedef typename MOVER_CONTAINER_TYPE::pos_t pos_t;
-		unique_container(const chart& c) : container(c){}
+		unique_container(const chart& c) : container(c), MOVER_CONTAINER_TYPE() {}
 
 		virtual void place(s_ptr& p, pos_t pos) { if (place_possible(p, pos)) { (*this)(pos) = p; moveL(p, pos); } }
 		virtual void displace(s_ptr& p) { if (displace_possible(p)) { (*this)(p->get_location()) = s_ptr(); moveL(p, pos_t()); } }
-		virtual void move(s_ptr& from, pos_t to) { if (move_possible(from, to)) { displace(from); place(from, to); } }
+		virtual void move(s_ptr from, pos_t to) { if (move_possible(from, to)) { displace(from); place(from, to); } }
 	
-		virtual s_ptr displace(pos_t from) { s_ptr& p = (*this)(from); displace(p); return p; }
+		virtual s_ptr displace(pos_t from) { s_ptr p = (*this)(from); displace(p); return p; }
 		virtual void move(pos_t from, pos_t to) { move((*this)(from), to); }
 	
 		virtual bool place_possible(const s_ptr& p, pos_t pos, bool after_displace = false) const
@@ -58,7 +59,7 @@ namespace griddle
 		}
 		virtual bool displace_possible(const s_ptr& p) const { return claim_possible(p); }
 		virtual bool move_possible(const s_ptr& from, pos_t to) const { return displace_possible(from) && place_possible(from, to, true); }
-	
+		virtual const s_ptr at(pos_t pos) const { return container::operator()(pos); }
 		virtual bool contains(pos_t pos, const s_ptr& p) const { return mChart.in_range(pos) && (*this)(pos) == p; }
 		virtual bool full(pos_t pos) const { return mChart.in_range(pos) && (bool)(*this)(pos); }
 	protected:
@@ -102,6 +103,7 @@ namespace griddle
 	
 		virtual bool contains(pos_t pos, const s_ptr& p) const { return mChart.in_range(pos) && (*this)(pos).find(p) != (*this)(pos).end(); }
 		virtual bool full(pos_t pos) const{ return !mChart.in_range(pos) || (*this)(pos).size() >= mCapacity; }
+		virtual const std::set<s_ptr>& at(pos_t pos) const { return container::operator()(pos); }
 		unsigned int get_capacity() { return mCapacity; }
 	protected:
 		const unsigned int mCapacity;

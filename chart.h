@@ -15,6 +15,7 @@ namespace griddle
 	class chart
 	{
 	public:
+		virtual ~chart() {};
 		typedef typename position<P> pos_t;
 		size_t index(const pos_t& pos) const { return index_impl(validate(pos)); }
 		inline bool in_range(const pos_t& pos) const { return !pos.nowhere() && in_range_impl(pos); }
@@ -23,8 +24,72 @@ namespace griddle
 		virtual size_t size() const = 0;
 		virtual bool iterate(std::function<bool(pos_t)> callback) const = 0;
 	protected:
+		// really?
+		template<typename Q=P, typename Aug=nullptr_t>
+		friend class augmented_chart;
 		virtual bool in_range_impl(const pos_t& pos) const = 0;
 		virtual size_t index_impl(const pos_t& pos) const = 0;
+	};
+
+	template<typename P, typename Aug>
+	class augmented_chart : public chart<std::pair<P,Aug>>
+	{
+	public:
+		augmented_chart(const chart<P>& source) : m_source(source) {}
+		virtual size_t size() const { return m_source.size(); }
+		virtual bool iterate(std::function<bool(pos_t)> callback) const
+		{
+			return m_source.iterate([&](position<P> p)->bool
+			{
+				return callback(std::pair<P,Aug>(p,Aug()));
+			}
+			);
+		};
+	protected:
+		virtual bool in_range_impl(const pos_t& pos) const { return m_source.in_range(pos.first); }
+		virtual size_t index_impl(const pos_t& pos) const { return m_source.index_impl(pos.first); }
+		const chart<P>& m_source;
+	};
+
+	template<typename P>
+	class union_chart : public chart<std::pair<P,size_t>>
+	{
+	public:
+		union_chart(const std::vector<const chart<P>*> components) :mComponents(components)
+		{
+			mSizes.push_back(0);
+			for (const auto& c : mComponents)
+			{
+				mSizes.push_back(mSizes.back() + c->size());
+			}
+		}
+		virtual size_t size() const { return mSizes.back(); }
+		virtual bool iterate(std::function<bool(pos_t)> callback) const
+		{
+			size_t b = 0;
+			for (const auto& c : mComponents)
+			{
+				if (!c->iterate([&callback, b](chart<P>::pos_t pos)->bool
+				{
+					return callback({ pos, b });
+				}))
+					return false;
+				b++;
+			}
+			return true;
+		}
+	protected:
+		const std::vector<const chart<P>*> mComponents;
+		std::vector<size_t> mSizes;
+
+		virtual bool in_range_impl(const pos_t& pos) const
+		{
+			return mComponents[pos.second]->in_range(pos.first);
+		}
+		virtual size_t index_impl(const pos_t& pos) const
+		{
+			return mSizes[pos.second] + mComponents[pos.second]->index(pos.first);
+		}
 	};
 
 	//implementations
@@ -33,26 +98,30 @@ namespace griddle
 	{
 	public:
 		bounded_grid(int left, int right, int top, int bottom) :
-			mLeft(left), mRight(right), mTop(top), mBottom(bottom), mWidth(right - left), mHeight(bottom - top)
+			left(left), right(right), top(top), bottom(bottom),
+			width(right - left), height(bottom - top)
 		{
 			assert(left < right && top < bottom);
 		}
-		virtual size_t size() const { return mWidth*mHeight; }
+		virtual size_t size() const { return width*height; }
 		virtual bool iterate(std::function<bool(pos_t)> callback) const
 		{
-			for (int y = mTop; y < mBottom; y++) for (int x = mLeft; x < mRight; x++) if(!callback({ x, y })) return false;
+			for (int y = top; y < bottom; y++)
+			for (int x = left; x < right; x++)
+			if (!callback({ x, y })) return false;
 			return true;
 		}
+
+		const int left;
+		const int right;
+		const int top;
+		const int bottom;
+		const int width;
+		const int height;
 	protected:
-		virtual size_t index_impl(const pos_t& pos) const { return mWidth*(pos.y - mTop) + pos.x - mLeft; }
-		virtual bool in_range_impl(const pos_t& pos) const { return in_rectangle(pos, mLeft, mRight, mTop, mBottom); }
+		virtual size_t index_impl(const pos_t& pos) const { return width*(pos.y - top) + pos.x - left; }
+		virtual bool in_range_impl(const pos_t& pos) const { return in_rectangle(pos, left, right, top, bottom); }
 	private:
-		int mLeft;
-		int mRight;
-		int mTop;
-		int mBottom;
-		int mWidth;
-		int mHeight;
 	};
 
 	class aligned_grid : public bounded_grid
@@ -255,46 +324,46 @@ namespace griddle
 		const std::vector<chart<P>> mBaseCharts;
 	};
 
-	template<typename P>
-	class union_chart : public chart<union_position<P>>
-	{
-	public:
+	//template<typename P>
+	//class union_chart : public chart<union_position<P>>
+	//{
+	//public:
 
-		typedef position<union_position<P>> pos_t;
-		union_chart(const std::vector<const chart<P>*>& components) :mComponents(components)
-		{
-			mSizes.push_back(0);
-			for (const auto& c : mComponents)
-			{
-				mSizes.push_back(mSizes.back() + c->size());
-			}
-		}
-		virtual size_t size() const { return mSizes.back(); }
-		virtual bool iterate(std::function<bool(pos_t)> callback) const
-		{
-			int b = 0;
-			for (const auto& c : mComponents)
-			{
-				if (!c->iterate([&callback,b](chart<P>::pos_t pos)->bool
-				{
-					return callback(pos_t(union_position<P>(pos, b)));
-				}))
-					return false;
-				b++;
-			}
-			return true;
-		}
-	protected:
-		const std::vector<const chart<P>*>& mComponents;
-		std::vector<size_t> mSizes;
+	//	typedef position<union_position<P>> pos_t;
+	//	union_chart(const std::vector<const chart<P>*>& components) :mComponents(components)
+	//	{
+	//		mSizes.push_back(0);
+	//		for (const auto& c : mComponents)
+	//		{
+	//			mSizes.push_back(mSizes.back() + c->size());
+	//		}
+	//	}
+	//	virtual size_t size() const { return mSizes.back(); }
+	//	virtual bool iterate(std::function<bool(pos_t)> callback) const
+	//	{
+	//		int b = 0;
+	//		for (const auto& c : mComponents)
+	//		{
+	//			if (!c->iterate([&callback,b](chart<P>::pos_t pos)->bool
+	//			{
+	//				return callback(pos_t(union_position<P>(pos, b)));
+	//			}))
+	//				return false;
+	//			b++;
+	//		}
+	//		return true;
+	//	}
+	//protected:
+	//	const std::vector<const chart<P>*>& mComponents;
+	//	std::vector<size_t> mSizes;
 
-		virtual bool in_range_impl(const pos_t& pos) const
-		{
-			return mComponents[pos.get_component()]->in_range(pos.pos);
-		}
-		virtual size_t index_impl(const pos_t& pos) const
-		{
-			return mSizes[pos.get_component()] + mComponents[pos.get_component()]->index(pos.pos);
-		}
-	};
+	//	virtual bool in_range_impl(const pos_t& pos) const
+	//	{
+	//		return mComponents[pos.get_component()]->in_range(pos.pos);
+	//	}
+	//	virtual size_t index_impl(const pos_t& pos) const
+	//	{
+	//		return mSizes[pos.get_component()] + mComponents[pos.get_component()]->index(pos.pos);
+	//	}
+	//};
 }

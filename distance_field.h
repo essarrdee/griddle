@@ -44,7 +44,7 @@ namespace griddle
 				distances(p) = 0;
 			}
 		}
-		void update(std::function<TP(P)> ChartToTopo = IDENTITY, std::function<P(TP)> TopoToChart = IDENTITY)
+		void update(std::function<TP(P)> ChartToTopo = IDENTITY<P>, std::function<P(TP)> TopoToChart = IDENTITY<P>)
 		{
 			while (!boundary.empty())
 			{
