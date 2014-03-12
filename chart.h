@@ -84,6 +84,8 @@ namespace griddle
 
 		virtual bool in_range_impl(const pos_t& pos) const
 		{
+			if (pos.second >= mComponents.size())
+				return false;
 			return mComponents[pos.second]->in_range(pos.first);
 		}
 		virtual size_t index_impl(const pos_t& pos) const
