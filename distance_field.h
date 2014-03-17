@@ -44,7 +44,7 @@ namespace griddle
 				distances(p) = 0;
 			}
 		}
-		void update(std::function<bool(pos_t)> walkable, std::function<TP(P)> ChartToTopo = IDENTITY<P>, std::function<P(TP)> TopoToChart = IDENTITY<P>)
+		void update(std::function<bool(pos_t)> walkable, size_t give_up_distance=SIZE_MAX, std::function<TP(P)> ChartToTopo = IDENTITY<P>, std::function<P(TP)> TopoToChart = IDENTITY<P>)
 		{
 			while (!boundary.empty())
 			{
@@ -63,7 +63,7 @@ namespace griddle
 					[&](topo_pos_t topo_pos)
 				{
 					pos_t pos(TopoToChart(topo_pos));
-					if (mBaseChart->in_range(pos) && dist + 1 < distances(pos) && walkable(pos))
+					if (mBaseChart->in_range(pos) && dist + 1 < distances(pos) && walkable(pos) && dist <= give_up_distance)
 					{
 						distances(pos) = dist + 1;
 						previous(pos) = current;

@@ -16,7 +16,7 @@ namespace griddle
 		virtual void claim(s_ptr& p) { if (claim_possible(p)) lockL(p); }
 		virtual void release(s_ptr& p) { if (release_possible(p)) unlockL(p); }
 
-		virtual bool claim_possible(const s_ptr& p) const { return p->unlocked() || has_lock(p); }
+		virtual bool claim_possible(const s_ptr& p) const { return p && (p->unlocked() || has_lock(p)); }
 		virtual bool release_possible(const s_ptr& p) const { return claim_possible(p) && !p->placed(); }
 
 		virtual bool has_lock(const s_ptr& p) const { return MOVER_TYPE::has_lock(p); }
@@ -82,7 +82,7 @@ namespace griddle
 			}
 		}
 		virtual void displace(s_ptr& p) { if (displace_possible(p)) (*this)(p->get_location()).erase(p); moveL(p, pos_t()); }
-		virtual void move(s_ptr& from, pos_t to) { if (move_possible(from, to)) { displace(from); place(from, to); } }
+		virtual void move(s_ptr from, pos_t to) { if (move_possible(from, to)) { displace(from); place(from, to); } }
 	
 		virtual bool place_possible(const s_ptr& p, pos_t pos, bool after_displace = false) const
 		{
